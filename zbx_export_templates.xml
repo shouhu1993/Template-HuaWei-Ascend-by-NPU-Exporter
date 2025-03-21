@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>5.0</version>
+    <date>2025-02-28T02:11:21Z</date>
+    <groups>
+        <group>
+            <name>Templates/Server hardware</name>
+        </group>
+    </groups>
+    <templates>
+        <template>
+            <template>Template HuaWei Ascend by NPU Exporter</template>
+            <name>Template HuaWei Ascend by NPU Exporter</name>
+            <description>华为昇腾平台NPU监控，基于NPU Exporter组件，使用该模板需要安装NPU Exporter，详情请参考https://www.hiascend.com/document/detail/zh/mindcluster/600/clustersched/installation/schedulingig/dlug_installation_018.html 和 https://www.hiascend.com/document/detail/zh/mindcluster/600/clustersched/reference/api/dlug_api_003.html</description>
+            <groups>
+                <group>
+                    <name>Templates/Server hardware</name>
+                </group>
+            </groups>
+            <applications>
+                <application>
+                    <name>NPU</name>
+                </application>
+                <application>
+                    <name>Zabbix raw items</name>
+                </application>
+            </applications>
+            <items>
+                <item>
+                    <name>Get NPU_exporter metrics</name>
+                    <type>HTTP_AGENT</type>
+                    <key>NPU_exporter.get</key>
+                    <history>1h</history>
+                    <trends>0</trends>
+                    <value_type>TEXT</value_type>
+                    <applications>
+                        <application>
+                            <name>Zabbix raw items</name>
+                        </application>
+                    </applications>
+                    <url>http://{HOST.CONN}:{$NPU_EXPORTER_PORT}/metrics</url>
+                </item>
+                <item>
+                    <name>Number of NPUs</name>
+                    <type>DEPENDENT</type>
+                    <key>system.npu.num[npu_exporter]</key>
+                    <delay>0</delay>
+                    <history>7d</history>
+                    <applications>
+                        <application>
+                            <name>NPU</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>PROMETHEUS_PATTERN</type>
+                            <params>machine_npu_nums
+</params>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>NPU_exporter.get</key>
+                    </master_item>
+                </item>
+            </items>
+            <discovery_rules>
+                <discovery_rule>
+                    <name>npu_chip_info</name>
+                    <type>DEPENDENT</type>
+                    <key>npu.chip.info[npu_exporter]</key>
+                    <delay>0</delay>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>npu chip id {#ID} AI Core current freq</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.aicore.current.freq[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <units>MHz</units>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_aicore_current_freq{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID} hbm memory utilization</name>
+                            <type>CALCULATED</type>
+                            <key>npu.chip.info.hbm.memory.utilization[npu_exporter,chipID{#ID}]</key>
+                            <history>30d</history>
+                            <trends>180d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>%</units>
+                            <params>last(&quot;npu.chip.info.hbm.used.memory[npu_exporter,chipID{#ID}]&quot;)/last(&quot;npu.chip.info.hbm.total.memory[npu_exporter,chipID{#ID}]&quot;)*100</params>
+                            <description>NPU hbm内存使用率</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{min(5m)}&gt;{$NPU_HBM_MEM_WARN}</expression>
+                                    <name>NPU chipID{#ID} hbm memory utilization &gt; {$NPU_HBM_MEM_WARN}%</name>
+                                    <priority>WARNING</priority>
+                                    <description>hbm内存使用率超过{$NPU_HBM_MEM_WARN}%</description>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID}  hbm total memory</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.hbm.total.memory[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>MB</units>
+                            <description>昇腾AI处理器片上总内存</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_hbm_total_memory{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID}  hbm used memory</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.hbm.used.memory[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>MB</units>
+                            <description>昇腾AI处理器片上内存已使用量</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_hbm_used_memory{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID} health status</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.health.status[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <description>昇腾AI处理器健康状态&#13;
+取值为0或1&#13;
+1：健康&#13;
+0：不健康</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_health_status{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{min(5m)}=0</expression>
+                                    <name>NPU chipID{#ID} 健康状态异常</name>
+                                    <priority>WARNING</priority>
+                                    <description>NPU chipID{#ID} 健康状态0</description>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID} temperature</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.temperature[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <units>℃</units>
+                            <description>昇腾AI处理器温度</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_temperature{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID}  AI Core utilization</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.utilization[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>%</units>
+                            <description>昇腾AI处理器AI Core利用率</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_utilization{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>npu chip id {#ID}  AI Core vector utilization</name>
+                            <type>DEPENDENT</type>
+                            <key>npu.chip.info.vector.utilization[npu_exporter,chipID{#ID}]</key>
+                            <delay>0</delay>
+                            <history>7d</history>
+                            <trends>180d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>%</units>
+                            <description>昇腾AI处理器AI Core利用率</description>
+                            <application_prototypes>
+                                <application_prototype>
+                                    <name>npu chip id {#ID}</name>
+                                </application_prototype>
+                            </application_prototypes>
+                            <preprocessing>
+                                <step>
+                                    <type>PROMETHEUS_PATTERN</type>
+                                    <params>npu_chip_info_vector_utilization{container_name=&quot;{#CONTAINER_NAME}&quot;,id=&quot;{#ID}&quot;,model_name=&quot;{#NAME}&quot;,namespace=&quot;{#NAMESPACE}&quot;,pcie_bus_info=&quot;{#PCIE_BUS_INFO}&quot;,pod_name=&quot;{#POD_NAME}&quot;,vdie_id=&quot;{#VDIE_ID}&quot;}
+</params>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>NPU_exporter.get</key>
+                            </master_item>
+                        </item_prototype>
+                    </item_prototypes>
+                    <graph_prototypes>
+                        <graph_prototype>
+                            <name>npu chip id {#ID} hbm memory utilization</name>
+                            <graph_items>
+                                <graph_item>
+                                    <sortorder>1</sortorder>
+                                    <color>00FF00</color>
+                                    <calc_fnc>ALL</calc_fnc>
+                                    <item>
+                                        <host>Template HuaWei Ascend by NPU Exporter</host>
+                                        <key>npu.chip.info.hbm.memory.utilization[npu_exporter,chipID{#ID}]</key>
+                                    </item>
+                                </graph_item>
+                            </graph_items>
+                        </graph_prototype>
+                        <graph_prototype>
+                            <name>npu chip id {#ID} temperature</name>
+                            <graph_items>
+                                <graph_item>
+                                    <sortorder>1</sortorder>
+                                    <color>1A7C11</color>
+                                    <item>
+                                        <host>Template HuaWei Ascend by NPU Exporter</host>
+                                        <key>npu.chip.info.temperature[npu_exporter,chipID{#ID}]</key>
+                                    </item>
+                                </graph_item>
+                            </graph_items>
+                        </graph_prototype>
+                    </graph_prototypes>
+                    <master_item>
+                        <key>NPU_exporter.get</key>
+                    </master_item>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#CONTAINER_NAME}</lld_macro>
+                            <path>$.labels.container_name</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#ID}</lld_macro>
+                            <path>$.labels.id</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#NAMESPACE}</lld_macro>
+                            <path>$.labels.namespace</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#NAME}</lld_macro>
+                            <path>$.labels.name</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#PCIE_BUS_INFO}</lld_macro>
+                            <path>$.labels.pcie_bus_info</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#POD_NAME}</lld_macro>
+                            <path>$.labels.pod_name</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#VDIE_ID}</lld_macro>
+                            <path>$.labels.vdie_id</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                    <preprocessing>
+                        <step>
+                            <type>PROMETHEUS_TO_JSON</type>
+                            <params>npu_chip_info_name{container_name=~&quot;.*&quot;,id=~&quot;[0-9]+&quot;,name=~&quot;.+&quot;,namespace=~&quot;.*&quot;,pcie_bus_info=~&quot;.+&quot;,pod_name=~&quot;.*&quot;,vdie_id=~&quot;.+&quot;}</params>
+                        </step>
+                    </preprocessing>
+                </discovery_rule>
+            </discovery_rules>
+            <macros>
+                <macro>
+                    <macro>{$NPU_EXPORTER_PORT}</macro>
+                    <value>8082</value>
+                    <description>npu exporter端口</description>
+                </macro>
+                <macro>
+                    <macro>{$NPU_HBM_MEM_WARN}</macro>
+                    <value>95</value>
+                    <description>hbm片上内存告警阈值</description>
+                </macro>
+            </macros>
+        </template>
+    </templates>
+</zabbix_export>

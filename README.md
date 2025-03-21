@@ -1,0 +1,1 @@
+# Template-HuaWei-Ascend-by-NPU-Exporter
